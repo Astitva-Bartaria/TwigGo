@@ -11,6 +11,7 @@ export const useAuthStore = create((set, get) => ({
   isSigningUp: false,
   isLoggingIn: false,
   isUpdatingProfile: false,
+  isDeleteModalOpen: false,
   isCheckingAuth: true,
   onlineUsers: [],
   socket: null,
@@ -80,6 +81,27 @@ export const useAuthStore = create((set, get) => ({
       toast.error(error.response.data.message);
     } finally {
       set({ isUpdatingProfile: false });
+    }
+  },
+
+  openDeleteModal: () => {
+    set({ isDeleteModalOpen: true });
+  },
+
+  closeDeleteModal: () => {
+    set({ isDeleteModalOpen: false });
+  },
+
+  deleteProfile: async () => {
+    try {
+      await axiosInstance.delete("/auth/deleteProfile");
+      set({ authUser: null });
+      toast.success("Account deleted successfully!");
+      get().disconnectSocket();
+      get().closeDeleteModal();
+    } catch (error) {
+      console.log("error in delete profile:", error);
+      toast.error(error.response.data.message);
     }
   },
 

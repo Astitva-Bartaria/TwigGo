@@ -1,5 +1,6 @@
 import cloudinary from "../lib/cloudinary.js";
 import { generateToken } from "../lib/utils.js";
+import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 
@@ -90,25 +91,66 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, fullName } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      res.status(400).json({ message: "Profile pic is required!" });
+    const updateFields = {};
+
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updateFields.profilePic = uploadResponse.secure_url;
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        profilePic: uploadResponse.secure_url,
-      },
-      { new: true }
-    );
+    if (fullName) {
+      updateFields.fullName = fullName;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: "No updates provided!" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateFields, {
+      new: true,
+    });
 
     res.status(200).json(updatedUser);
   } catch (error) {
     console.log("Error in updateProfile controller:", error.message);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+};
+
+export const deleteProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found!" });
+    }
+
+    // Delete profile picture from Cloudinary if exists
+    if (user.profilePic) {
+      const publicIdMatch = user.profilePic.match(/\/([^/]+)\.\w+$/);
+      const publicId = publicIdMatch ? publicIdMatch[1] : null;
+
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId);
+      }
+    }
+
+    await Message.deleteMany({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    });
+    await User.findByIdAndDelete(userId);
+    res.cookie("jwt", "", { maxAge: 0 });
+
+    return res
+      .status(200)
+      .json({ message: "Account and messages deleted successfully!" });
+  } catch (error) {
+    console.log("Error in deleteProfile controller:", error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
 };
