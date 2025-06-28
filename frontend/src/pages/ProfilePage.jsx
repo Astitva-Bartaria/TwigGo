@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import {
   Camera,
-  CheckLine,
+  Check,
   Loader2,
   LogOut,
   Mail,
@@ -131,7 +131,7 @@ const ProfilePage = () => {
                     {isUpdatingProfile ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <CheckLine size="20" />
+                      <Check size="20" />
                     )}
                   </button>
                 )}
